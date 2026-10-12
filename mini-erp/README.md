@@ -1,59 +1,149 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Mini ERP — Inventory & Purchase Order System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A lightweight, production-grade Mini ERP Inventory and Purchase Order Management System built with **Laravel 12**, **MySQL**, **Bootstrap 5**, and **Laravel Sanctum**.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 1. Setup Commands
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+```bash
+# 1. Clone repository and navigate to project directory
+cd mini-erp
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+# 2. Install dependencies
+composer install
 
-## Learning Laravel
+# 3. Setup environment file
+cp .env.example .env
+# Configure DB_DATABASE=mini_erp, DB_USERNAME=root, DB_PASSWORD=
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+# 4. Generate application encryption key
+php artisan key:generate
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+# 5. Run database migrations and seed test data
+php artisan migrate --seed
 
-## Laravel Sponsors
+# 6. Start the local server
+php artisan serve
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+> **Web Application:** [http://localhost:8000](http://localhost:8000)
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## 2. Test Execution Instructions
 
-## Contributing
+The project includes unit and feature test suites.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+# Run all tests using Artisan
+php artisan test
 
-## Code of Conduct
+# Or run directly via PHPUnit
+./vendor/bin/phpunit
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+All 23 tests validate line item calculations, domain stock exceptions, state transitions with atomic stock updates, and API security/validation.
 
-## Security Vulnerabilities
+---
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## 3. Default Login Credentials
 
-## License
+Populated automatically by `DatabaseSeeder`:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- **Web Dashboard:** `http://localhost:8000/login`
+- **API Endpoint:** `POST http://localhost:8000/api/login`
+- **Email:** `admin@example.com`
+- **Password:** `password`
+
+*The seeder also generates 3 suppliers and 10 inventory items with realistic stock levels and thresholds.*
+
+---
+
+## 4. Indexing & Optimization Decisions
+
+- **Composite Index on `products (stock, low_stock_threshold)`**:
+  Accelerates low-stock inventory filtering (`WHERE stock < low_stock_threshold`) without table scans.
+- **Composite Index on `purchase_orders (supplier_id, status)`**:
+  Optimizes queries filtering orders by supplier and status during reports and dashboard aggregation.
+- **Foreign Key Index on `purchase_order_items (purchase_order_id, product_id)`**:
+  Speeds up relationship queries and line item lookups.
+- **Atomic Stock Mutations & Race Condition Prevention**:
+  Stock count increments only on `RECEIVED` status, wrapped in `DB::transaction()` with pessimistic row locking (`Product::lockForUpdate()`).
+
+---
+
+## 5. API Testing (cURL Commands)
+
+All API endpoints require the `Accept: application/json` header. Protected endpoints require `Authorization: Bearer <TOKEN>`.
+
+### 1. Login (Retrieve Token)
+```bash
+curl -X POST http://127.0.0.1:8000/api/login \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"password"}'
+```
+
+### 2. View Inventory
+```bash
+curl -X GET http://127.0.0.1:8000/api/inventory \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+### 3. View Low Stock Items
+```bash
+curl -X GET http://127.0.0.1:8000/api/inventory/low-stock \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+### 4. Create Purchase Order
+```bash
+curl -X POST http://127.0.0.1:8000/api/purchase-orders \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{
+    "supplier_id": 1,
+    "items": [
+      {"product_id": 1, "quantity": 5, "unit_price": 1200.00},
+      {"product_id": 2, "quantity": 10, "unit_price": 75.00}
+    ]
+  }'
+```
+
+### 5. Transition PO Status
+**Approve Order:**
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/purchase-orders/1/status \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"status":"APPROVED"}'
+```
+
+**Receive Order (Atomically Increments Stock):**
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/purchase-orders/1/status \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"status":"RECEIVED"}'
+```
+
+### 6. Supplier Spend Report
+```bash
+curl -X GET http://127.0.0.1:8000/api/reports/supplier-spend \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+---
+
+## 6. Postman Collection
+
+An exported Postman collection is included in the project:
+- Import [`mini_erp_postman_collection.json`](mini_erp_postman_collection.json) into Postman.
+- The `Login` request automatically sets the Bearer token into the `{{token}}` collection variable for all remaining requests.

@@ -33,4 +33,12 @@ class PurchaseOrderItem extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    /**
+     * Calculate line item subtotal.
+     */
+    public static function calculateSubtotal(int $quantity, float $unitPrice): float
+    {
+        return round($quantity * $unitPrice, 2);
+    }
 }

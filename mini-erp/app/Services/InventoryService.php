@@ -33,4 +33,22 @@ class InventoryService
     {
         return Product::whereColumn('stock', '<', 'low_stock_threshold')->count();
     }
+
+    /**
+     * Increment stock for a product, validating that the increment is positive.
+     *
+     * @throws \App\Exceptions\InvalidStockQuantityException
+     */
+    public function incrementStock(Product $product, int $quantity): Product
+    {
+        if ($quantity <= 0) {
+            throw new \App\Exceptions\InvalidStockQuantityException(
+                "Stock increment quantity must be positive, [{$quantity}] given."
+            );
+        }
+
+        $product->increment('stock', $quantity);
+
+        return $product->fresh();
+    }
 }

@@ -44,4 +44,14 @@ class PurchaseOrder extends Model
             PurchaseOrderStatus::CANCELLED,
         ], true);
     }
+
+    /**
+     * Calculate grand total from attached line items collection.
+     */
+    public function calculateTotal(): float
+    {
+        return (float) round($this->items->sum(function ($item) {
+            return (float) ($item->subtotal ?? ($item->quantity * $item->unit_price));
+        }), 2);
+    }
 }
